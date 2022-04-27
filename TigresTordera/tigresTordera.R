@@ -2,7 +2,7 @@ library(tidyverse)
 library(lubridate)
 library(scales)
 
-mosquits <- read_csv(file = "~/Documents/FEINA/PERSONAL_PROJECTS/TigresTordera/Jordistrap_until_june_2021.csv")
+mosquits <- read_csv(file = "Data/Jordistrap_until_june_2021.csv")
 
 
 mosquits %>%
@@ -27,5 +27,5 @@ mosquits %>%
         axis.text.x = element_text(angle = 45, 
                                    vjust = 1, 
                                    hjust = 1))
-# ggsave(filename = "~/Documents/FEINA/PROJECTES PERSONALS/TigresTordera/tigres_trampaTorderaCAT.png")
+# ggsave(filename = "Figs/tigres_trampaTorderaCAT.png")
 

@@ -3,7 +3,7 @@ library(tidylog)
 library(lubridate)
 library(scales)
 
-meteo <- read_csv("MeteoTorderaMaresme2021.csv")
+meteo <- read_csv("Data/MeteoTorderaMaresme2021.csv")
 
 meteo %>% 
   select(Date, Temperature) %>% 
@@ -30,4 +30,4 @@ meteo %>%
         axis.text.x = element_text(angle = 45, 
                                    vjust = 1, 
                                    hjust = 1))
-# ggsave("TorderaTempMaxMin.png")
+# ggsave("Figs/TorderaTempMaxMin.png")

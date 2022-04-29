@@ -5,6 +5,7 @@ library(tidylog)
 library(lubridate)
 library(scales)
 library(pollen) # To calculate growing degree days: https://cran.r-project.org/web/packages/pollen/vignettes/gdd.html
+source("mcheck_function.R")
 
 # Data sets (mosquito's data set, the official one)
 meteo <- read_csv("Data/MeteoTorderaMaresme2021.csv")
@@ -129,6 +130,128 @@ meteo21 %>%
 # ggsave("Figs/WeeklyDD_Tordera.png")
 
 
-  
+
+# # # # # # 
+# Temporal trends using linear models ----
+# # # # # #
+library(nlme)
+
+meteoMosq <- meteo21 %>% 
+  # pivot_wider(names_from = Variable, values_from = Value) %>%
+  mutate(gdd = gdd(tmax = DailyMax, tmin = DailyMin, tbase = 10, tbase_max = 30)) %>% 
+  left_join(mosquits21) %>% 
+  filter(!is.na(Abundance)) %>% 
+  mutate(weekly_acc_gdd = c(NA, diff(gdd)))
+
+M0 <- gls(Abundance ~  weekly_acc_gdd + WeekNum, na.action = na.omit, data = meteoMosq)
+summary(M0)
+car::Anova(M0)
+plot(M0)
+
+E<-as.numeric(residuals(M0,type="normalized"))
+# Given there is an NA...
+I<-!is.na(meteoMosq$weekly_acc_gdd)
+Efull<-vector(length=length(meteoMosq$weekly_acc_gdd))
+Efull<-NA
+Efull[I]<-E
+
+#Auto-correlation plot
+acf(Efull,na.action = na.pass,
+    main="Auto-correlation plot for residuals")
+
+# First attempt to model the correlation structure
+M1<-gls(Abundance ~ weekly_acc_gdd + WeekNum, na.action = na.omit,
+        correlation = corCompSymm(form =~ WeekNum), data = meteoMosq)
+summary(M1)
+
+# Second attempt
+M2<-gls(Abundance ~ weekly_acc_gdd + WeekNum, na.action = na.omit,
+        correlation = corAR1(form =~ WeekNum), data = meteoMosq)  
+summary(M2)
+
+AIC(M0, M1, M2) # AR1 model is much better than M0 (linear model without correl structure) and M1.
+anova(M0, M2) # M2 is clearly better.
+
+# Let's check validation for M2
+E<-as.numeric(residuals(M2,type="normalized"))
+# Given there is an NA...
+I<-!is.na(meteoMosq$weekly_acc_gdd)
+Efull<-vector(length=length(meteoMosq$weekly_acc_gdd))
+Efull<-NA
+Efull[I]<-E
+#Auto-correlation plot
+acf(Efull,na.action = na.pass,
+    main="Auto-correlation plot for residuals")
+# NO AUTOCORRELATION LEFT! YAY!
+
+car::Anova(M2)
+# Analysis of Deviance Table (Type II tests)
+# Response: Abundance
+# Df  Chisq Pr(>Chisq)   
+# weekly_acc_gdd  1 8.1833   0.004228 **
+# WeekNum         1 0.4680   0.493894   
+# ---
+# Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+summary(M2)
+# Generalized least squares fit by REML
+# Model: Abundance ~ weekly_acc_gdd + WeekNum 
+# Data: meteoMosq 
+# AIC      BIC    logLik
+# 383.1152 391.1697 -186.5576
+# 
+# Correlation Structure: ARMA(1,0)
+# Formula: ~WeekNum 
+# Parameter estimate(s):
+#   Phi1 
+# 0.7170292 
+# 
+# Coefficients:
+# Value Std.Error   t-value p-value
+# (Intercept)    -45.00346  38.54071 -1.167686  0.2504
+# weekly_acc_gdd   1.06761   0.37321  2.860647  0.0069
+# WeekNum          0.80617   1.17838  0.684129  0.4982
+# 
+# Correlation: 
+#   (Intr) wkly__
+# weekly_acc_gdd -0.367       
+# WeekNum        -0.758 -0.186
+# 
+# Standardized residuals:
+#   Min          Q1         Med          Q3         Max 
+# -1.13831768 -0.49232145 -0.08703551  0.28566503  2.81774001 
+# 
+# Residual standard error: 42.32828 
+# Degrees of freedom: 40 total; 37 residual
+
+mcheck(M2)
+# We see some increase in spread... we need weights!
+
+# Third attempt
+M2.w <-gls(Abundance ~ weekly_acc_gdd + WeekNum, na.action = na.omit,
+        correlation = corAR1(form =~ WeekNum), data = meteoMosq,
+        weights = varFixed(~weekly_acc_gdd))  
+AIC(M2, M2.w)
+# M2.w much better
+
+mcheck2(M2.w) # ok... it's the zero abundances that mess things up.
+car::Anova(M2.w)
+# Analysis of Deviance Table (Type II tests)
+# Response: Abundance
+#               Df  Chisq Pr(>Chisq)  
+# weekly_acc_gdd  1 5.5595    0.01838 *
+# WeekNum         1 0.3895    0.53256  
+
+summary(M2.w)
+# Coefficients:
+#   Value Std.Error    t-value p-value
+# (Intercept)    -20.848122 24.837296 -0.8393878  0.4066
+# weekly_acc_gdd   0.805259  0.341523  2.3578487  0.0238
+# WeekNum          0.428497  0.686581  0.6241022  0.5364
+
+visreg::visreg(M2.w)
 
 
+# # # # # # 
+# Temporal trends using additive models ----
+# # # # # #

@@ -49,7 +49,7 @@ meteo21 %>%
         panel.grid.minor = element_blank(),
         text = element_text(size = 16),
         legend.position = c(0.13,0.85))
-
+# ggsave("Figs/MaxMeanMinTempsTordera2021.png")
 
 # Weekly temperatures (isoweek() starting on Monday, as our mosquito sampling)
 meteo21_week <-  meteo %>% 
@@ -74,21 +74,46 @@ meteo21_week %>%
   pivot_longer(cols = c("Abundance.corrected", starts_with("Weekly")), names_to = "Variable", values_to = "Value") %>% 
   ggplot(aes(x = Date2, y = Value)) +
   geom_line(aes(col = Variable), lwd = 0.8) +
+  scale_colour_manual(values = c("#1E6DA8","#FE7223")) +
   labs(title = "Tordera BG Trap") +
   xlab("2021") +
-  ylab("Temperature (ºC)\nMosquitoes captured") +
+  scale_y_continuous("Weekly maximum temperature (ºC)", sec.axis = sec_axis(~., name = "Daily tiger mosquito capture")) +
   theme_bw() +
   theme(legend.title = element_blank(),
         panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
         text = element_text(size = 16),
-        legend.position = c(0.18,0.9))
+        legend.position = "none")
 # ggsave("Figs/WeeklyMaxTemp_Tordera.png")
 
 
 # # # # # # # # # # # # # 
 # GROWTH DEGREE DAYS ---- 
 # # # # # # # # # # # # # 
+
+# Sum of the growing degree days of 2021 along with mosquito abundance
+meteo21 %>% 
+  mutate(gdd = gdd(tmax = DailyMax, tmin = DailyMin, tbase = 10, tbase_max = 30)) %>% 
+  left_join(mosquits21) %>% 
+  mutate(Abundance = Abundance*10) %>% # To make the scale of Abundance be similar to the scale of accumulated growing degree days.
+  filter(!is.na(Abundance)) %>% 
+  select(Date2, gdd, Abundance) %>%  
+  pivot_longer(cols = c("gdd", "Abundance"), names_to = "Variable", values_to = "Value") %>%
+  ggplot(aes(x = Date2, y = Value)) +
+  geom_line(aes(colour = Variable), lwd = 0.8) +
+  scale_colour_manual(labels = c("Mosquitoes", "Degree days"), values = c("#1E6DA8","#FE7223")) +
+  labs(title = "Tordera BG Trap") +
+  xlab("2021") +
+  scale_y_continuous("Sum of growing degree days (ºC)", sec.axis = sec_axis(~./10, name = "Abundance")) +
+  theme_bw() +
+  theme(legend.title = element_blank(),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        text = element_text(size = 16),
+        # legend.position = c(0.2,0.8),
+        legend.position = "none")
+# ggsave("Figs/SumGDDvsMosquitoesTordera.png")
+
 
 # Growth-degree days accumulated per DAY
 meteo21 %>% 
@@ -105,7 +130,7 @@ meteo21 %>%
         panel.grid.minor = element_blank(),
         text = element_text(size = 16),
         legend.position = c(0.2,0.8))
-
+# ggsave("Figs/GDDaccummDay.png")
 
 # Growth-degree days accumulated per WEEK, along with mosquitoes captured per week
 meteo21 %>% 
@@ -113,6 +138,7 @@ meteo21 %>%
   mutate(gdd = gdd(tmax = DailyMax, tmin = DailyMin, tbase = 10, tbase_max = 30)) %>% 
   left_join(mosquits21) %>% 
   filter(!is.na(Abundance)) %>% 
+  mutate(Abundance = Abundance) %>% 
   mutate(weekly_acc_gdd = c(NA, diff(gdd))) %>% 
   pivot_longer(cols = c("weekly_acc_gdd", "Abundance"), names_to = "Variable", values_to = "Value") %>%
   ggplot(aes(x = Date2, y = Value)) +
@@ -120,13 +146,13 @@ meteo21 %>%
   scale_colour_manual(labels = c("Mosquitoes", "Degree days"), values = c("#1E6DA8","#FE7223")) +
   labs(title = "Tordera BG Trap") +
   xlab("2021") +
-  ylab("Weekly mosquito capture (indiv.)\nWeekly accumulated degree days (ºC)") +
+  scale_y_continuous("Weekly accumulated degree days (ºC)", sec.axis = sec_axis(~., name = "Weekly mosquito capture (indiv.)")) +
   theme_bw() +
   theme(legend.title = element_blank(),
         panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
         text = element_text(size = 16),
-        legend.position = c(0.2,0.8))
+        legend.position = "none")
 # ggsave("Figs/WeeklyDD_Tordera.png")
 
 
@@ -255,3 +281,46 @@ visreg::visreg(M2.w)
 # # # # # # 
 # Temporal trends using additive models ----
 # # # # # #
+library(mgcv)
+
+meteoMosq <- meteo21 %>% 
+  # pivot_wider(names_from = Variable, values_from = Value) %>%
+  mutate(gdd = gdd(tmax = DailyMax, tmin = DailyMin, tbase = 10, tbase_max = 30)) %>% 
+  left_join(mosquits21) %>% 
+  filter(!is.na(Abundance)) %>% 
+  mutate(weekly_acc_gdd = c(NA, diff(gdd)))
+
+# Additive model without temporal correlation structure
+gam1 <- gamm(Abundance ~ weekly_acc_gdd + s(WeekNum), data = meteoMosq)
+summary(gam1$gam)
+
+# Let's add temporal autocorrelation
+gam2 <- gamm(Abundance ~ weekly_acc_gdd + s(WeekNum), 
+             correlation = corAR1(form = ~WeekNum),
+             data = meteoMosq)
+
+AIC(gam1$lme, gam2$lme)
+anova(gam1$lme, gam2$lme) # The model with temporal correlation is better.
+
+summary(gam2$gam)
+anova(gam2$gam)
+# Family: gaussian 
+# Link function: identity 
+# Formula:
+#   Abundance ~ weekly_acc_gdd + s(WeekNum)
+# 
+# Parametric Terms:
+#   df     F p-value
+# weekly_acc_gdd  1 10.84 0.00219 **
+# 
+# Approximate significance of smooth terms:
+#             edf Ref.df     F  p-value
+# s(WeekNum)   1      1   1.021   0.319
+
+
+plot(gam2$gam)
+             
+mcheck(gam2$gam) # more or less ok
+
+gam2$gam$data <- meteoMosq
+visreg::visreg(gam2$gam)

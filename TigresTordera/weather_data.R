@@ -10,18 +10,21 @@ library(RcppRoll)
 library(parallel)
 library(RSocrata)
 
-source("../auth/transparencia_cat.R")
+# source("../auth/transparencia_cat.R")
 
 #####WEATHER PALAFOLLS AREA ################3
-# #Fogars de la Selva i Malgrat weather station codes from https://analisi.transparenciacatalunya.cat/Medi-Ambient/Metadades-estacions-meteorol-giques-autom-tiques/yqwd-vj5e/data : 
+# Fogars de la Selva i Malgrat weather station codes from https://analisi.transparenciacatalunya.cat/Medi-Ambient/Metadades-estacions-meteorol-giques-autom-tiques/yqwd-vj5e/data : 
 
-plf_station_codes = "'KP', 'WT'"
+plf_station_codes <-  "'KP', 'WT'"
 # Variable codes from https://analisi.transparenciacatalunya.cat/Medi-Ambient/Metadades-variables-meteorol-giques/4fb2-n3yi/data
-weather_variables = read_csv("/home/fbartu/Research/Laura_Blanco/Data/Metadades_variables_meteorol_giques.csv") %>% clean_names()
+weather_variables <- read_csv("Data/Metadades_variables_meteorol_giques.csv") %>% 
+  clean_names()
 
-wv_codes = weather_variables %>% filter(acronim %in% c("VV10", "HR", "T", "PPT")) %>% pull(codi_variable) 
+wv_codes <- weather_variables %>% 
+  filter(acronim %in% c("VV10", "HR", "T", "PPT")) %>% 
+  pull(codi_variable) 
 
-these_dates = seq.Date(from = as_date("2020-01-01"), to=as_date("2020-03-31"), by = "day")
+these_dates = seq.Date(from = as_date("2021-01-01"), to=as_date("2021-12-31"), by = "day")
 this_date = these_dates[1]
 
 # Note that I am putting the variable codes in by hand here since it is easier than figuring out how to automatically generate the right syntax for them in the API filter

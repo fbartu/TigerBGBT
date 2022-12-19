@@ -84,15 +84,14 @@ write_rds(bcn_weather_daily, "bcn_weather_daily.Rds")
 
 # Combining Everything ####
 bcn_weather_daily2020 = bind_rows(list(meteo_cat_weather_jan2020 %>% mutate(data_extrem = as.character(data_extrem)),
-                                   meteo_cat_weather_feb2020 %>% mutate(data_extrem = as.character(data_extrem)),
-                                   meteo_cat_weather_abr2020 %>% mutate(data_extrem = as.character(data_extrem)),
-                                   meteo_cat_weather_mai2020 %>% mutate(data_extrem = as.character(data_extrem)),
-                                   meteo_cat_weather_jun2020 %>% mutate(data_extrem = as.character(data_extrem)),
-                                   meteo_cat_weather_jul2020 %>% mutate(data_extrem = as.character(data_extrem)),
-                                   meteo_cat_weather_ago2020 %>% mutate(data_extrem = as.character(data_extrem)),
-                                   meteo_cat_weather_sep2020 %>% mutate(data_extrem = as.character(data_extrem)),
-                                   meteo_cat_weather_oct2020 %>% mutate(data_extrem = as.character(data_extrem)),
-                                   meteo_cat_weather_nov2020 %>% mutate(data_extrem = as.character(data_extrem)),
-                                   meteo_cat_weather_des2020 %>% mutate(data_extrem = as.character(data_extrem)))) %>% group_by(date, weather_type) %>% ungroup() 
+                                       meteo_cat_weather_feb2020 %>% mutate(data_extrem = as.character(data_extrem)),
+                                       meteo_cat_weather_abr2020 %>% mutate(data_extrem = as.character(data_extrem)),
+                                       meteo_cat_weather_mai2020 %>% mutate(data_extrem = as.character(data_extrem)),
+                                       meteo_cat_weather_jun2020 %>% mutate(data_extrem = as.character(data_extrem)),
+                                       meteo_cat_weather_jul2020 %>% mutate(data_extrem = as.character(data_extrem)),
+                                       meteo_cat_weather_ago2020 %>% mutate(data_extrem = as.character(data_extrem)),
+                                       meteo_cat_weather_sep2020 %>% mutate(data_extrem = as.character(data_extrem)),
+                                       meteo_cat_weather_oct2020 %>% mutate(data_extrem = as.character(data_extrem)),
+                                       meteo_cat_weather_nov2020 %>% mutate(data_extrem = as.character(data_extrem)),
+                                       meteo_cat_weather_des2020 %>% mutate(data_extrem = as.character(data_extrem)))) %>% group_by(date, weather_type) %>% ungroup() 
 write_rds(bcn_weather_daily2020, "bcn_weather_daily2020.Rds")
-
